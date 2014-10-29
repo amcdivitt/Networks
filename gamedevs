@@ -1,0 +1,41 @@
+---
+title: "networksagain"
+author: "Clio3"
+date: "October 29, 2014"
+output: html_document
+---
+
+```{r}
+library(igraph)
+library(dplyr)
+library(tidyr)
+library(stringr)
+# library(sna)
+gamedevs = read.csv("~//Desktop/networkgamedevs.csv", header = TRUE)
+basedon<-gamedevs %>%
+  select(Game, Based.on)
+developer<-gamedevs %>%
+  select(Developer, Game)
+```
+
+```{r}
+first_graph<-graph.data.frame(basedon,directed=TRUE)
+E(first_graph)
+plot(first_graph)
+```
+
+```{r}
+second_graph<-graph.data.frame(developer,directed=FALSE)
+E(second_graph)
+plot(second_graph)
+```
+
+```{r}
+bipartite.mapping(second_graph)
+V(second_graph)$type <- bipartite.mapping(second_graph)$type
+is.bipartite(second_graph)
+plot(second_graph, layout = layout.bipartite)
+bipartite <- bipartite.projection(second_graph)
+plot(bipartite$proj1)
+plot(bipartite$proj2)
+```
