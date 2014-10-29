@@ -1,0 +1,41 @@
+---
+title: "Networks"
+author: "Clio3"
+date: "October 22, 2014"
+output: html_document
+---
+
+Due to my interest in game developers and the types of games they created, I made a data set that would allow me to see what types of games influenced other types, including what developers were influenced by which games. My historical question is to see what kind of connections existed in the early video game industry between developers and how these connections influenced what types of games were made.
+
+```{r}
+library(igraph)
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(historydata)
+library(sna)
+gamedevs = read.csv("~//Desktop/networkgamedevs.csv", header = TRUE)
+igraph.options(vertex.size=3, vertex.label=NA,
+               edge.arrow.size=.5)
+plot(gamedevs)
+str(gamedevs)
+```
+I'm trying to follow the tutorial from Lincoln on getting my data into a graph to display networks. In order to answer the question, I created the data of Developer, Game, and Based On data, which would explain who the developer is, what game they created with the year, and what game it was based on and the year.
+
+```{r}
+gamedevs <- data_frame(node_1 = c("A", "B", "C"), 
+                          node_2 = c("B", "C", "A"))
+gamedevs
+gamedevs <- graph.data.frame(gamedevs)
+gamedevs
+E(gamedevs)
+V(gamedevs)
+plot(gamedevs)
+```
+Let's see if this works.
+```{r}
+get.adjacency(gamedevs)
+plot(gamedevs)
+title("Does this work?")
+```
+So, it doesn't work. I'm not sure what to do.
