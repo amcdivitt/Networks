@@ -1,0 +1,210 @@
+---
+title: "networks2"
+author: "Clio3"
+date: "October 28, 2014"
+output: html_document
+---
+Network analysis is something I'm very interested in for my project. Therefore, I'm going to try my best to create a meaningful piece for my final project during this exercise. However, first, I will run some tentative network analysis based on Lincoln Mullen's tutorial.
+
+```{r}
+library(igraph)
+library(dplyr)
+library(historydata)
+```
+
+```{r}
+sample_data <- data_frame(node_1 = c("A", "B", "C"), 
+                          node_2 = c("B", "C", "A"))
+sample_data
+sample_graph <- graph.data.frame(sample_data)
+sample_graph
+E(sample_graph)
+V(sample_graph)
+plot(sample_graph)
+```
+
+```{r}
+get.adjacency(sample_graph)
+```
+
+```{r}
+data(tudors)
+tudors
+```
+
+```{r}
+tudors_g <- graph.data.frame(tudors, directed = FALSE)
+```
+
+```{r}
+plot(tudors_g)
+title("The Tudors, take one")
+```
+
+```{r}
+tudor_people <- data_frame(name = V(tudors_g)$name, 
+                           monarch =  c(TRUE, FALSE, TRUE, FALSE, FALSE,
+                                       FALSE, FALSE, TRUE, TRUE, TRUE, TRUE,
+                                       FALSE, FALSE, FALSE, FALSE, FALSE,
+                                       FALSE, FALSE, FALSE, FALSE, FALSE,
+                                       FALSE, FALSE, FALSE, FALSE))
+tudor_people
+V(tudors_g)$shape <- ifelse(tudor_people$monarch, "square", "circle")
+V(tudors_g)$color <- ifelse(tudor_people$monarch, "red", "lightblue")
+plot(tudors_g)
+title("The Tudors, take two")
+```
+
+```{r}
+E(tudors_g)$color <- ifelse(E(tudors_g)$relationship == "child",
+                            "yellow", "green")
+plot(tudors_g)
+title("The Tudors, take three")
+```
+
+```{r}
+plot(tudors_g, layout = layout.reingold.tilford)
+title("The Tudors, take three")
+```
+
+```{r}
+str(tudors_g, e = TRUE, v = TRUE, g = TRUE)
+```
+
+```{r}
+members <- data_frame(person = c("A", "B", "C", "A", "D", 
+                                 "D", "E", "F", "F", "G", "G"),
+                      organization = c("Odd Fellows", "Odd Fellows",
+                                       "Odd Fellows", "Masons", 
+                                       "Masons", "Pythians", "Pythians",
+                                       "Masons", "Odd Fellows", "Masons",
+                                       "Odd Fellows"))
+members
+members_g <- graph.data.frame(members, directed = FALSE)
+plot(members_g)
+```
+
+```{r}
+V(members_g)
+bipartite.mapping(members_g)
+V(members_g)$type <- bipartite.mapping(members_g)$type
+is.bipartite(members_g)
+plot(members_g, layout = layout.bipartite)
+title("A bipartite layout of a fraternal network")
+```
+
+```{r}
+bipartite <- bipartite.projection(members_g)
+str(bipartite)
+plot(bipartite$proj1)
+title("Just the people in the fraternal organizations")
+```
+
+```{r}
+plot(bipartite$proj2)
+title("Just the fraternal organizations")
+```
+
+```{r}
+E(bipartite$proj2)
+E(bipartite$proj2)$weight
+plot(bipartite$proj2, edge.width = E(bipartite$proj2)$weight)
+title("Fraternal organizations weighted by shared membership")
+```
+
+```{r}
+plot(bipartite$proj2, edge.width = E(bipartite$proj2)$weight,
+     layout = layout.fruchterman.reingold(bipartite$proj2, 
+                                          weights = E(bipartite$proj2)$weight),
+     vertex.label.dist = 1)
+title("Fraternal organizations weighted by shared membership")
+```
+
+```{r}
+data(judges_appointments)
+judges_appointments
+judges_appointments %>%
+  group_by(judge_id) %>%
+  summarize(n = n()) %>%
+  filter(n > 1) %>%
+  arrange(desc(n))
+```
+
+```{r}
+library(stringr)
+# Remove appendages to court names
+judges_appointments$court_name <- judges_appointments$court_name %>%
+  str_replace("Chief Judge, ", "")
+judges_appointments$court_name <- judges_appointments$court_name %>%
+  str_replace(", Chief Judge", "")
+judges_appointments$court_name <- judges_appointments$court_name %>%
+  str_replace(", Chief Justice", "")
+judges_appointments$court_name <- judges_appointments$court_name %>%
+  str_replace("Associate Judge, ", "")
+```
+
+```{r}
+courts <- graph.data.frame(judges_appointments, directed = FALSE)
+V(courts)$type <- bipartite.mapping(courts)$type
+courts <- bipartite.projection(courts, which = TRUE)
+courts
+```
+
+```{r}
+set.seed(723) # keep the same arrangement each time
+l <-  layout.fruchterman.reingold(courts, weights = E(courts)$weight)
+plot(courts, 
+     vertex.label = NA, 
+     vertex.size = 3,
+     edge.width = E(courts)$weight,
+     layout = l)
+title("Movement of judges between federal courts, first attempt")
+```
+
+```{r}
+lookup_court <- function(name) {
+  judges_appointments$court_type[
+    match(V(courts)$name, judges_appointments$court_name)
+    ]
+}
+V(courts)$court_type <- lookup_court(V(courts)$name)
+lookup_color <- function(type) {
+  require(stringr)
+  if(is.na(type)) return("blue")
+  if(type == "USDC") return("green")
+  if(type == "USCA") return("yellow")
+  if(str_detect(type, "USCC")) return("yellow")
+  if(type == "USSC") return("red")
+  else return("blue")
+} 
+lookup_color <- Vectorize(lookup_color, USE.NAMES = FALSE)
+V(courts)$color <- lookup_color(V(courts)$court_type)
+plot(courts, 
+     vertex.label = NA, 
+     vertex.size = 3,
+     edge.width = E(courts)$weight,
+     layout = l)
+title("Movement of judges between federal courts, second attempt")
+legend("bottomleft", legend = c("Distict", "Circuit/Appeal", "SCOTUS", "Other"),
+       col = c("green", "yellow", "red", "blue"), pch = 19,
+       title = "Court type")
+```
+
+```{r}
+courts_com <- fastgreedy.community(courts)
+membership(courts_com)[1:3]
+```
+
+```{r}
+library(d3Network)
+courts_network_df <- courts %>%
+  get.edgelist() %>%
+  as.data.frame
+
+d3SimpleNetwork(courts_network_df, standAlone = FALSE,
+                parentElement = "#d3network",
+                width = 750, height = 900)
+```
+
+
+
